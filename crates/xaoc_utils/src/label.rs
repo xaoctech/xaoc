@@ -5,21 +5,26 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
 mod hashes_table {
-    use std::any::TypeId;
+    use crate::hash::HashMap;
     use hashbrown::hash_map::Entry;
     use parking_lot::Mutex;
-    use crate::hash::{HashMap};
+    use std::any::TypeId;
 
-    const HASHES: once_cell::sync::Lazy<Mutex<HashMap<(TypeId, u64), &'static str>>> = once_cell::sync::Lazy::new(|| {
-        Mutex::new(HashMap::new())
-    });
+    const HASHES: once_cell::sync::Lazy<Mutex<HashMap<(TypeId, u64), &'static str>>> =
+        once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
 
     pub fn intern(type_id: TypeId, id: u64, name: &'static str) -> &'static str {
         let hashes = &*HASHES;
         let mut _lock = hashes.lock();
         match _lock.entry((type_id, id)) {
-            Entry::Occupied(o) => if *o.get() != name { panic!("Duplicate hash value {:08x} for strings {:?} and {:?}", id, name, o.get()) } else { *o.get() },
-            Entry::Vacant(v) => v.insert(name)
+            Entry::Occupied(o) => {
+                if *o.get() != name {
+                    panic!("Duplicate hash value {:08x} for strings {:?} and {:?}", id, name, o.get())
+                } else {
+                    *o.get()
+                }
+            }
+            Entry::Vacant(v) => v.insert(name),
         }
     }
 }
@@ -32,11 +37,7 @@ pub struct ConstLabel<Domain> {
 
 impl<Domain: 'static> ConstLabel<Domain> {
     pub const fn new(name: &'static str) -> Self {
-        Self {
-            id: const_fnv1a_hash::fnv1a_hash_str_64(name),
-            name,
-            _marker: PhantomData
-        }
+        Self { id: const_fnv1a_hash::fnv1a_hash_str_64(name), name, _marker: PhantomData }
     }
 
     pub fn label(self) -> Label<Domain> {
@@ -54,11 +55,7 @@ impl<Domain: 'static> From<ConstLabel<Domain>> for Label<Domain> {
     fn from(from: ConstLabel<Domain>) -> Self {
         #[cfg(feature = "check_label_hashes")]
         hashes_table::intern(TypeId::of::<Domain>(), from.id, from.name);
-        Self {
-            id: from.id,
-            name: from.name,
-            _marker: PhantomData
-        }
+        Self { id: from.id, name: from.name, _marker: PhantomData }
     }
 }
 
@@ -78,15 +75,9 @@ impl<Domain: 'static> Label<Domain> {
                 hashes_table::intern(TypeId::of::<Domain>(), id, name);
                 name
             }
-            Cow::Owned(name) => {
-                hashes_table::intern(TypeId::of::<Domain>(), id, Box::leak(name.into_boxed_str()))
-            }
+            Cow::Owned(name) => hashes_table::intern(TypeId::of::<Domain>(), id, Box::leak(name.into_boxed_str())),
         };
-        Self {
-            id,
-            name,
-            _marker: PhantomData
-        }
+        Self { id, name, _marker: PhantomData }
     }
 
     #[inline]
@@ -98,16 +89,11 @@ impl<Domain: 'static> Label<Domain> {
     pub fn name(&self) -> &str {
         self.name
     }
-
 }
 
 impl<Domain> Clone for Label<Domain> {
     fn clone(&self) -> Self {
-        Self {
-            id: self.id,
-            name: self.name,
-            _marker: PhantomData,
-        }
+        Self { id: self.id, name: self.name, _marker: PhantomData }
     }
 }
 impl<Domain> Copy for Label<Domain> {}
@@ -131,10 +117,10 @@ mod tests {
     struct Tag;
 
     #[test]
-    fn static_label() {
-        const L1: ConstLabel::<Tag> = ConstLabel::new("1");
-        const L2: ConstLabel::<Tag> = ConstLabel::new("2");
-        const L3: ConstLabel::<Tag> = ConstLabel::new("1");
+    fn const_label() {
+        const L1: ConstLabel<Tag> = ConstLabel::new("1");
+        const L2: ConstLabel<Tag> = ConstLabel::new("2");
+        const L3: ConstLabel<Tag> = ConstLabel::new("1");
         assert_ne!(L1.label(), L2.label());
         assert_ne!(L1.id, L2.id);
         assert_ne!(L1.name, L2.name);

@@ -1,10 +1,10 @@
+use ahash::{AHasher, RandomState};
+use hashbrown::hash_map::RawEntryMut;
 use std::any::{Any, TypeId};
 use std::fmt::Debug;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::Deref;
-use ahash::{AHasher, RandomState};
-use hashbrown::hash_map::RawEntryMut;
 
 /// A hasher builder that will create a fixed hasher.
 #[derive(Debug, Clone, Default)]
@@ -69,11 +69,7 @@ impl<V: Hash, H: BuildHasher + Default> Hashed<V, H> {
         let builder = H::default();
         let mut hasher = builder.build_hasher();
         value.hash(&mut hasher);
-        Self {
-            hash: hasher.finish(),
-            value,
-            marker: PhantomData,
-        }
+        Self { hash: hasher.finish(), value, marker: PhantomData }
     }
 
     /// The pre-computed hash.
@@ -110,21 +106,14 @@ impl<V: PartialEq, H> PartialEq for Hashed<V, H> {
 
 impl<V: Debug, H> Debug for Hashed<V, H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Hashed")
-            .field("hash", &self.hash)
-            .field("value", &self.value)
-            .finish()
+        f.debug_struct("Hashed").field("hash", &self.hash).field("value", &self.value).finish()
     }
 }
 
 impl<V: Clone, H> Clone for Hashed<V, H> {
     #[inline]
     fn clone(&self) -> Self {
-        Self {
-            hash: self.hash,
-            value: self.value.clone(),
-            marker: PhantomData,
-        }
+        Self { hash: self.hash, value: self.value.clone(), marker: PhantomData }
     }
 }
 
@@ -180,9 +169,7 @@ pub trait PreHashMapExt<K, V> {
 impl<K: Hash + Eq + PartialEq + Clone, V> PreHashMapExt<K, V> for PreHashMap<K, V> {
     #[inline]
     fn get_or_insert_with<F: FnOnce() -> V>(&mut self, key: &Hashed<K>, func: F) -> &mut V {
-        let entry = self
-            .raw_entry_mut()
-            .from_key_hashed_nocheck(key.hash(), key);
+        let entry = self.raw_entry_mut().from_key_hashed_nocheck(key.hash(), key);
         match entry {
             RawEntryMut::Occupied(entry) => entry.into_mut(),
             RawEntryMut::Vacant(entry) => {
@@ -196,7 +183,7 @@ impl<K: Hash + Eq + PartialEq + Clone, V> PreHashMapExt<K, V> for PreHashMap<K, 
 pub fn fixed_hash<T: ?Sized + Hash>(value: &T) -> u64 {
     let mut hasher = FixedState.build_hasher();
     value.hash(&mut hasher);
-    return hasher.finish()
+    return hasher.finish();
 }
 
 pub fn fixed_hash_with_type<T: Any + Hash>(value: T) -> u64 {
@@ -204,5 +191,5 @@ pub fn fixed_hash_with_type<T: Any + Hash>(value: T) -> u64 {
     value.hash(&mut hasher);
     value.type_id().hash(&mut hasher);
     TypeId::of::<T>().hash(&mut hasher);
-    return hasher.finish()
+    return hasher.finish();
 }

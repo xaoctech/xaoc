@@ -1,4 +1,3 @@
-
 pub mod prelude {
     pub use crate::default;
 }
@@ -6,5 +5,5 @@ pub mod prelude {
 mod default;
 pub use default::default;
 
-pub mod label;
 pub mod hash;
+pub mod label;
