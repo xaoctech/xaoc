@@ -1,0 +1,16 @@
+[package]
+name = "xaoc"
+version = "0.0.0"
+edition = "2021"
+
+[workspace]
+members = ["crates/*"]
+
+[features]
+# Force dynamic linking, which improves iterative compile times
+dynamic = ["xaoc_dylib"]
+
+[dependencies]
+xaoc_dylib = { path = "crates/xaoc_dylib", version = "0.0.0", default-features = false, optional = true }
+xaoc_lib = { path = "crates/xaoc_lib", version = "0.0.0", default-features = false }
+
